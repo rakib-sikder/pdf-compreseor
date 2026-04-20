@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Compressor — Text Only</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #10b981;
+    --warn: #f59e0b;
+    --error: #ef4444;
+    --card: #13131f;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -100px; right: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  header .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 400;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Drop Zone */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--surface);
+    position: relative;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.03);
+    box-shadow: 0 0 40px rgba(0,229,255,0.08);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .drop-icon {
+    width: 56px; height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(124,58,237,0.15));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+
+  .drop-zone h3 {
+    font-size: 18px; font-weight: 700; margin-bottom: 6px;
+  }
+
+  .drop-zone p {
+    color: var(--muted); font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* File list */
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .file-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+
+  .file-item.processing { border-color: var(--accent); }
+  .file-item.done { border-color: var(--success); }
+  .file-item.error { border-color: var(--error); }
+
+  .file-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .file-info { min-width: 0; }
+
+  .file-name {
+    font-weight: 600; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+
+  .file-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+
+  .file-status {
+    font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .processing .status-dot { background: var(--accent); animation: pulse 1s infinite; }
+  .done .status-dot { background: var(--success); }
+  .error .status-dot { background: var(--error); }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 3px; border-radius: 2px;
+    background: var(--border);
+    margin-top: 8px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .file-item.processing .progress-bar { display: block; }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  /* Action area */
+  .actions {
+    display: flex;
+    gap: 12px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px 24px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0099cc);
+    color: #000;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.25);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(0,229,255,0.35);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4; cursor: not-allowed; transform: none;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover {
+    border-color: var(--muted);
+    color: var(--text);
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .stat {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-value.green { color: var(--success); }
+  .stat-value.purple { color: #a78bfa; }
+
+  /* Download all */
+  .download-all {
+    text-align: center;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .btn-download-all {
+    background: linear-gradient(135deg, var(--success), #059669);
+    color: #fff;
+    padding: 16px 40px;
+    border-radius: 12px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(16,185,129,0.3);
+  }
+
+  .btn-download-all:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(16,185,129,0.4);
+  }
+
+  /* Download link on file item */
+  .dl-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--success);
+    text-decoration: none;
+    border: 1px solid rgba(16,185,129,0.3);
+    padding: 3px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .dl-link:hover {
+    background: rgba(16,185,129,0.1);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hidden { display: none !important; }
+
+  /* Log console */
+  .log-toggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    width: 100%;
+    padding: 4px;
+  }
+  .log-toggle:hover { color: var(--text); }
+
+  .log-box {
+    background: #050508;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 140px;
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+
+  .log-line.info { color: #64748b; }
+  .log-line.ok { color: var(--success); }
+  .log-line.warn { color: var(--warn); }
+  .log-line.err { color: var(--error); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">PDF Tool</div>
+  <h1>Image Remover<br>& Compressor</h1>
+  <p>Strips all images → text-only → compressed PDF</p>
+</header>
+
+<div class="container">
+  <!-- Drop Zone -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" multiple accept=".pdf">
+    <div class="drop-icon">📄</div>
+    <h3>Drop PDF files here</h3>
+    <p>or click to browse — multiple files supported</p>
+  </div>
+
+  <!-- File List -->
+  <div class="file-list hidden" id="fileList"></div>
+
+  <!-- Actions -->
+  <div class="actions hidden" id="actions">
+    <button class="btn btn-ghost" id="clearBtn">Clear All</button>
+    <button class="btn btn-primary" id="processBtn">⚡ Process & Compress</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar hidden" id="statsBar">
+    <div class="stat">
+      <span class="stat-label">Files</span>
+      <span class="stat-value" id="statFiles">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Original Size</span>
+      <span class="stat-value purple" id="statOriginal">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Compressed Size</span>
+      <span class="stat-value" id="statCompressed">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Saved</span>
+      <span class="stat-value green" id="statSaved">—</span>
+    </div>
+  </div>
+
+  <!-- Download All -->
+  <div class="download-all hidden" id="downloadAll">
+    <button class="btn-download-all" id="downloadAllBtn">⬇ Download All Compressed PDFs</button>
+  </div>
+
+  <!-- Log -->
+  <button class="log-toggle hidden" id="logToggle" onclick="document.getElementById('logBox').classList.toggle('hidden')">▸ show log</button>
+  <div class="log-box hidden" id="logBox"></div>
+</div>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const { jsPDF } = window.jspdf;
+
+  let files = [];
+  let results = []; // { name, blob, origSize, newSize }
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileListEl = document.getElementById('fileList');
+  const actionsEl = document.getElementById('actions');
+  const processBtn = document.getElementById('processBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statsBar = document.getElementById('statsBar');
+  const downloadAllEl = document.getElementById('downloadAll');
+  const downloadAllBtn = document.getElementById('downloadAllBtn');
+  const logToggle = document.getElementById('logToggle');
+  const logBox = document.getElementById('logBox');
+
+  // Drag & drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    addFiles([...e.dataTransfer.files].filter(f => f.type === 'application/pdf'));
+  });
+  fileInput.addEventListener('change', () => addFiles([...fileInput.files]));
+
+  clearBtn.addEventListener('click', () => {
+    files = []; results = [];
+    fileListEl.innerHTML = '';
+    fileListEl.classList.add('hidden');
+    actionsEl.classList.add('hidden');
+    statsBar.classList.add('hidden');
+    downloadAllEl.classList.add('hidden');
+    logToggle.classList.add('hidden');
+    logBox.classList.add('hidden');
+    logBox.innerHTML = '';
+    fileInput.value = '';
+    processBtn.disabled = false;
+  });
+
+  function addFiles(newFiles) {
+    newFiles.forEach(f => {
+      if (!files.find(x => x.name === f.name && x.size === f.size)) {
+        files.push(f);
+        renderFileItem(f);
+      }
+    });
+    if (files.length > 0) {
+      fileListEl.classList.remove('hidden');
+      actionsEl.classList.remove('hidden');
+    }
+  }
+
+  function renderFileItem(file) {
+    const id = 'file_' + Math.random().toString(36).slice(2);
+    file._id = id;
+    const div = document.createElement('div');
+    div.className = 'file-item';
+    div.id = id;
+    div.innerHTML = `
+      <div class="file-icon">📄</div>
+      <div class="file-info">
+        <div class="file-name">${file.name}</div>
+        <div class="file-meta">
+          <span>${fmtSize(file.size)}</span>
+          <span id="${id}_meta"></span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="${id}_prog"></div></div>
+      </div>
+      <div class="file-status">
+        <div class="status-dot"></div>
+        <span id="${id}_status">Queued</span>
+      </div>
+    `;
+    fileListEl.appendChild(div);
+  }
+
+  function setItemState(file, state, statusText, extra) {
+    const el = document.getElementById(file._id);
+    if (!el) return;
+    el.className = 'file-item ' + state;
+    document.getElementById(file._id + '_status').textContent = statusText;
+    if (extra) document.getElementById(file._id + '_meta').textContent = extra;
+  }
+
+  function setProgress(file, pct) {
+    const prog = document.getElementById(file._id + '_prog');
+    if (prog) prog.style.width = pct + '%';
+  }
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function log(msg, type = 'info') {
+    const line = document.createElement('div');
+    line.className = 'log-line ' + type;
+    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  processBtn.addEventListener('click', async () => {
+    if (files.length === 0) return;
+    processBtn.disabled = true;
+    results = [];
+    downloadAllEl.classList.add('hidden');
+    logToggle.classList.remove('hidden');
+    logBox.classList.remove('hidden');
+    logBox.innerHTML = '';
+    statsBar.classList.remove('hidden');
+
+    let totalOrig = 0, totalNew = 0;
+
+    for (const file of files) {
+      setItemState(file, 'processing', 'Reading…');
+      setProgress(file, 10);
+      log(`Processing: ${file.name}`, 'info');
+
+      try {
+        const origSize = file.size;
+        totalOrig += origSize;
+
+        // Read file as ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        setProgress(file, 20);
+
+        // Load PDF with pdf.js
+        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const numPages = pdfDoc.numPages;
+        log(`  ${numPages} page(s) found`, 'info');
+        setProgress(file, 30);
+
+        // Extract text from all pages
+        const pageTexts = [];
+        for (let i = 1; i <= numPages; i++) {
+          const page = await pdfDoc.getPage(i);
+          const textContent = await page.getTextContent();
+
+          // Build text — group by lines using y-position
+          const items = textContent.items;
+          let text = '';
+          let lastY = null;
+
+          for (const item of items) {
+            if ('str' in item) {
+              const y = item.transform ? item.transform[5] : 0;
+              if (lastY !== null && Math.abs(y - lastY) > 2) {
+                text += '\n';
+              }
+              text += item.str;
+              if (item.hasEOL) text += '\n';
+              lastY = y;
+            }
+          }
+
+          pageTexts.push(text.trim());
+          setProgress(file, 30 + Math.round((i / numPages) * 40));
+        }
+
+        log(`  Text extracted, building compressed PDF…`, 'info');
+        setProgress(file, 75);
+
+        // Build new text-only PDF using jsPDF
+        const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 40;
+        const maxWidth = pageW - margin * 2;
+        const lineHeight = 14;
+        const fontSize = 10;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fontSize);
+
+        for (let p = 0; p < pageTexts.length; p++) {
+          if (p > 0) doc.addPage();
+
+          const rawText = pageTexts[p];
+          if (!rawText) continue;
+
+          const paragraphs = rawText.split('\n');
+          let curY = margin;
+
+          for (const para of paragraphs) {
+            if (!para.trim()) {
+              curY += lineHeight * 0.5;
+              continue;
+            }
+
+            // Word-wrap
+            const lines = doc.splitTextToSize(para, maxWidth);
+            for (const line of lines) {
+              if (curY + lineHeight > pageH - margin) {
+                doc.addPage();
+                curY = margin;
+              }
+              doc.text(line, margin, curY);
+              curY += lineHeight;
+            }
+          }
+        }
+
+        setProgress(file, 90);
+
+        // Get output as blob
+        const pdfBlob = doc.output('blob');
+        const newSize = pdfBlob.size;
+        totalNew += newSize;
+
+        const savings = Math.max(0, Math.round((1 - newSize / origSize) * 100));
+        const outName = file.name.replace(/\.pdf$/i, '') + '_compressed.pdf';
+
+        results.push({ name: outName, blob: pdfBlob, origSize, newSize });
+
+        setProgress(file, 100);
+        setItemState(file, 'done', '✓ Done',
+          `→ ${fmtSize(newSize)} (saved ${savings}%)`
+        );
+
+        // Add download link to file item
+        const statusEl = document.getElementById(file._id + '_status');
+        const dlA = document.createElement('a');
+        dlA.className = 'dl-link';
+        dlA.textContent = '⬇ Download';
+        dlA.href = URL.createObjectURL(pdfBlob);
+        dlA.download = outName;
+        statusEl.after(dlA);
+
+        log(`  Done → ${fmtSize(newSize)} (${savings}% smaller)`, 'ok');
+
+      } catch (err) {
+        setItemState(file, 'error', '✗ Failed');
+        log(`  Error: ${err.message}`, 'err');
+        console.error(err);
+      }
+    }
+
+    // Update stats
+    document.getElementById('statFiles').textContent = results.length;
+    document.getElementById('statOriginal').textContent = fmtSize(totalOrig);
+    document.getElementById('statCompressed').textContent = fmtSize(totalNew);
+    const totalSaved = Math.max(0, Math.round((1 - totalNew / totalOrig) * 100));
+    document.getElementById('statSaved').textContent = totalSaved + '%';
+
+    if (results.length > 0) {
+      downloadAllEl.classList.remove('hidden');
+    }
+
+    log(`All done! ${results.length}/${files.length} files processed.`, 'ok');
+    processBtn.disabled = false;
+  });
+
+  // Download all as separate files (triggered one by one)
+  downloadAllBtn.addEventListener('click', () => {
+    results.forEach((r, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(r.blob);
+        a.download = r.name;
+        a.click();
+      }, i * 400);
+    });
+  });
+</script>
+</body>
+</html>
