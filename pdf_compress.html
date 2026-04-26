@@ -1,1042 +1,493 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Compressor</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg:       #f5f5f4;
-  --surface:  #ffffff;
-  --border:   #e5e5e3;
-  --border2:  #d4d4d2;
-  --text:     #1a1a18;
-  --sub:      #6b6b68;
-  --hint:     #a3a3a0;
-  --accent:   #18181b;
-  --blue:     #2563eb;
-  --green:    #16a34a;
-  --amber:    #d97706;
-  --red:      #dc2626;
-  --radius:   10px;
-}
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 56px 20px 80px;
-}
-
-/* ── HEADER ── */
-header {
-  text-align: center;
-  margin-bottom: 44px;
-}
-
-.wordmark {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--sub);
-  letter-spacing: 0.02em;
-  margin-bottom: 20px;
-}
-
-.wordmark-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-h1 {
-  font-size: clamp(1.75rem, 4vw, 2.6rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--text);
-  line-height: 1.15;
-  margin-bottom: 10px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--sub);
-  line-height: 1.6;
-}
-
-/* ── CARD ── */
-.card {
-  width: 100%;
-  max-width: 600px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.card + .card { margin-top: 12px; }
-
-.card-section {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
-}
-
-.card-section:last-child { border-bottom: none; }
-
-.section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--hint);
-  margin-bottom: 14px;
-}
-
-/* ── SEGMENTED CONTROL (Image Mode) ── */
-.seg {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 3px;
-  gap: 3px;
-}
-
-.seg-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 11px 10px;
-  border-radius: 7px;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-  color: var(--sub);
-  position: relative;
-}
-
-.seg-btn input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
-
-.seg-btn-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: inherit;
-}
-
-.seg-btn-desc {
-  font-size: 11px;
-  color: var(--hint);
-  text-align: center;
-  line-height: 1.4;
-}
-
-.seg-btn.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px var(--border);
-}
-
-.seg-btn.active .seg-btn-desc { color: var(--sub); }
-
-/* ── COMPRESSION LEVEL ── */
-.level-track {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-
-.level-btn {
-  padding: 10px 8px;
-  border-radius: 8px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: center;
-  transition: all 0.15s;
-  position: relative;
-}
-
-.level-btn input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
-
-.level-btn-name {
-  font-size: 12px;
-  font-weight: 600;
-  display: block;
-  color: var(--text);
-  margin-bottom: 2px;
-}
-
-.level-btn-hint {
-  font-size: 10px;
-  color: var(--hint);
-  display: block;
-  line-height: 1.4;
-}
-
-.level-btn:hover { border-color: var(--border2); background: var(--bg); }
-
-.level-btn.lv-low     { border-color: var(--green);  background: rgba(22,163,74,0.05); }
-.level-btn.lv-medium  { border-color: var(--amber);  background: rgba(217,119,6,0.05); }
-.level-btn.lv-extreme { border-color: var(--red);    background: rgba(220,38,38,0.05); }
-
-.level-btn.lv-low .level-btn-name     { color: var(--green); }
-.level-btn.lv-medium .level-btn-name  { color: var(--amber); }
-.level-btn.lv-extreme .level-btn-name { color: var(--red); }
-
-/* ── QUALITY SLIDER ── */
-.quality-row {
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.quality-row.visible { display: flex; }
-
-.quality-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.quality-title { font-size: 13px; font-weight: 500; }
-
-.quality-badge {
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 2px 9px;
-  color: var(--blue);
-  min-width: 44px;
-  text-align: center;
-}
-
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-  cursor: pointer;
-  outline: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  cursor: pointer;
-}
-
-.quality-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--hint);
-}
-
-/* ── SETTINGS ROW ── */
-.settings-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.setting {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.setting-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--sub);
-}
-
-select {
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 8px 10px;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a0' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 28px;
-}
-
-select:focus { border-color: var(--accent); }
-
-/* ── DROP ZONE ── */
-.drop-zone {
-  border: 1.5px dashed var(--border2);
-  border-radius: 12px;
-  padding: 44px 28px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--surface);
-  position: relative;
-  margin-top: 12px;
-}
-
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent);
-  background: var(--bg);
-}
-
-.drop-zone input[type="file"] {
-  position: absolute; inset: 0;
-  opacity: 0; cursor: pointer; width: 100%; height: 100%;
-}
-
-.drop-icon-wrap {
-  width: 44px; height: 44px;
-  border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 14px;
-}
-
-.drop-icon-svg { width: 20px; height: 20px; stroke: var(--sub); }
-
-.drop-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.drop-sub   { font-size: 12px; color: var(--hint); }
-
-/* ── FILE LIST ── */
-.file-list {
-  display: flex; flex-direction: column;
-  gap: 1px;
-  margin-top: 12px;
-}
-
-.file-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  display: grid;
-  grid-template-columns: 32px 1fr auto;
-  gap: 12px;
-  align-items: center;
-  transition: border-color 0.2s;
-}
-
-.file-item + .file-item { border-top: none; border-radius: 0; }
-.file-item:first-child   { border-radius: 10px 10px 0 0; }
-.file-item:last-child    { border-radius: 0 0 10px 10px; }
-.file-item:only-child    { border-radius: 10px; }
-
-.file-item.processing { border-color: #93c5fd; background: #eff6ff; }
-.file-item.done       { border-color: #86efac; background: #f0fdf4; }
-.file-item.error      { border-color: #fca5a5; background: #fef2f2; }
-
-/* override stacked border when colored */
-.file-item.processing + .file-item,
-.file-item.done + .file-item,
-.file-item.error + .file-item { border-top: 1px solid var(--border); }
-
-.file-icon-box {
-  width: 32px; height: 32px;
-  border-radius: 7px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-}
-
-.file-icon-svg { width: 14px; height: 14px; stroke: var(--sub); }
-
-.file-info { min-width: 0; }
-
-.file-name {
-  font-size: 13px; font-weight: 500;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  color: var(--text); margin-bottom: 2px;
-}
-
-.file-meta {
-  font-size: 11px; color: var(--hint);
-  display: flex; gap: 10px; flex-wrap: wrap;
-}
-
-.file-meta span { white-space: nowrap; }
-
-.progress-bar {
-  height: 2px; border-radius: 1px;
-  background: #dbeafe;
-  margin-top: 6px; overflow: hidden; display: none;
-}
-
-.file-item.processing .progress-bar { display: block; }
-
-.progress-fill {
-  height: 100%;
-  background: var(--blue);
-  border-radius: 1px; transition: width 0.3s ease; width: 0%;
-}
-
-.file-right {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
-}
-
-.status-chip {
-  font-size: 11px; font-weight: 500;
-  display: flex; align-items: center; gap: 5px;
-  color: var(--sub); white-space: nowrap;
-}
-
-.status-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--border2); flex-shrink: 0;
-}
-
-.processing .status-dot { background: var(--blue); animation: blink 1.2s ease infinite; }
-.done .status-dot       { background: var(--green); }
-.error .status-dot      { background: var(--red); }
-
-.dl-btn {
-  font-size: 11px; font-weight: 500;
-  color: var(--green); text-decoration: none;
-  background: rgba(22,163,74,0.08);
-  border: 1px solid rgba(22,163,74,0.25);
-  border-radius: 5px; padding: 3px 9px;
-  transition: all 0.15s; white-space: nowrap;
-}
-
-.dl-btn:hover { background: rgba(22,163,74,0.14); }
-
-/* ── ACTIONS ── */
-.actions {
-  display: flex; gap: 8px; margin-top: 12px;
-}
-
-.btn {
-  font-family: inherit; font-size: 13px; font-weight: 500;
-  border-radius: 8px; border: none;
-  cursor: pointer; padding: 10px 18px;
-  transition: all 0.15s;
-}
-
-.btn-primary {
-  background: var(--accent); color: #fff; flex: 1;
-  letter-spacing: -0.01em;
-}
-
-.btn-primary:hover:not(:disabled) { background: #27272a; }
-.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.btn-ghost {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--sub);
-}
-
-.btn-ghost:hover { background: var(--bg); color: var(--text); }
-
-/* ── STATS ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  margin-top: 12px;
-}
-
-.stat-cell {
-  padding: 14px 16px;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.stat-cell:last-child { border-right: none; }
-
-.stat-label { font-size: 10px; font-weight: 500; color: var(--hint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
-.stat-value { font-size: 17px; font-weight: 600; color: var(--text); }
-.stat-value.is-green { color: var(--green); }
-.stat-value.is-blue  { color: var(--blue); }
-
-/* ── DOWNLOAD ALL ── */
-.download-all { margin-top: 12px; }
-
-.btn-download-all {
-  width: 100%;
-  background: var(--green); color: #fff;
-  font-family: inherit; font-size: 14px; font-weight: 600;
-  border: none; border-radius: 9px;
-  padding: 13px;
-  cursor: pointer; transition: all 0.15s;
-  letter-spacing: -0.01em;
-}
-
-.btn-download-all:hover { background: #15803d; }
-
-/* ── LOG ── */
-.log-wrap { margin-top: 12px; }
-
-.log-toggle-btn {
-  background: none; border: none; cursor: pointer;
-  font-family: inherit; font-size: 12px; color: var(--hint);
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 0;
-  transition: color 0.15s;
-}
-
-.log-toggle-btn:hover { color: var(--sub); }
-
-.log-toggle-caret { font-size: 9px; transition: transform 0.2s; }
-.log-toggle-caret.open { transform: rotate(90deg); }
-
-.log-box {
-  margin-top: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  font-size: 11px;
-  color: var(--hint);
-  max-height: 140px;
-  overflow-y: auto;
-  line-height: 1.75;
-}
-
-.log-line.ok   { color: var(--green); }
-.log-line.warn { color: var(--amber); }
-.log-line.err  { color: var(--red); }
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
-@keyframes up { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-
-.fade-in { animation: up 0.3s ease both; }
-
-.hidden { display: none !important; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Compressor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0a0a0a; --surface:#111; --border:#1e1e1e; --border2:#282828;
+      --accent:#4fffb0; --accent2:#00c8ff; --danger:#ff4f6d;
+      --text:#e8edf5; --muted:#666; --r:12px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif;
+           min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:52px 20px 80px; }
+    .wrap { width:100%; max-width:560px; }
+
+    /* Header */
+    header { margin-bottom:36px; }
+    .pill { display:inline-flex; align-items:center; gap:6px; font-family:'DM Mono',monospace;
+            font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; }
+    .dot { width:5px; height:5px; border-radius:50%; background:var(--accent);
+           box-shadow:0 0 5px var(--accent); animation:blink 2.5s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+    h1 { font-size:clamp(24px,5vw,36px); font-weight:300; letter-spacing:-.03em; margin-bottom:8px; }
+    h1 em { font-style:normal; color:var(--accent); }
+    .sub { font-size:13px; color:var(--muted); line-height:1.6; }
+
+    /* Card */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+
+    /* Dropzone */
+    .dz-wrap { padding:20px; }
+    #dz { border:1px dashed var(--border2); border-radius:9px; padding:36px 20px;
+          text-align:center; cursor:pointer; transition:border-color .2s,background .2s; }
+    #dz:hover,#dz.over { border-color:rgba(79,255,176,.4); background:rgba(79,255,176,.025); }
+    .dz-ico { display:inline-flex; align-items:center; justify-content:center;
+              width:40px; height:40px; border-radius:9px; background:rgba(79,255,176,.07);
+              margin-bottom:12px; transition:transform .2s ease; }
+    #dz:hover .dz-ico { transform:translateY(-2px); }
+    .dz-ico svg { width:18px; height:18px; color:var(--accent); }
+    .dz-lbl { font-size:13px; font-weight:500; margin-bottom:3px; }
+    .dz-hint { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+    #file-input { display:none; }
+
+    /* Queue */
+    #queue { display:flex; flex-direction:column; gap:5px; margin-top:12px; }
+    .frow { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:8px;
+            background:rgba(255,255,255,.02); border:1px solid var(--border);
+            animation:fadeup .18s ease; transition:border-color .2s; }
+    .frow.running { border-color:rgba(79,255,176,.2); }
+    .frow.done    { border-color:rgba(79,255,176,.12); opacity:.8; }
+    .frow.error   { border-color:rgba(255,79,109,.2); }
+    .fthumb { width:30px; height:30px; border-radius:6px; flex-shrink:0;
+              background:rgba(255,79,109,.08); display:flex; align-items:center; justify-content:center; }
+    .fthumb svg { width:13px; height:13px; color:var(--danger); }
+    .finfo { flex:1; min-width:0; }
+    .fname { font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .fmeta { font-size:10px; font-family:'DM Mono',monospace; color:var(--muted); margin-top:1px; }
+    .fbar  { height:2px; background:var(--border); border-radius:2px; margin-top:4px; overflow:hidden; display:none; }
+    .fbar.show { display:block; }
+    .fbar-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0; transition:width .3s; }
+    .fbar-fill.pulse { width:45%; animation:sweep 1.2s ease-in-out infinite; }
+    @keyframes sweep { 0%{transform:translateX(-140%)} 100%{transform:translateX(320%)} }
+    .ftag { font-size:9px; font-family:'DM Mono',monospace; flex-shrink:0;
+            padding:2px 7px; border-radius:99px; border:1px solid var(--border2); color:var(--muted); }
+    .ftag.running { color:var(--accent);  border-color:rgba(79,255,176,.25); }
+    .ftag.done    { color:var(--accent);  border-color:rgba(79,255,176,.2); background:rgba(79,255,176,.05); }
+    .ftag.error   { color:var(--danger);  border-color:rgba(255,79,109,.2); }
+    .fdl { display:none; align-items:center; justify-content:center;
+           width:26px; height:26px; border-radius:6px; flex-shrink:0;
+           background:rgba(79,255,176,.07); border:1px solid rgba(79,255,176,.18);
+           color:var(--accent); cursor:pointer; transition:background .15s; }
+    .fdl.show { display:flex; }
+    .fdl:hover { background:rgba(79,255,176,.14); }
+    .fdl svg { width:12px; height:12px; }
+    .frm { background:none; border:none; color:var(--border2); cursor:pointer;
+           padding:3px; border-radius:4px; display:flex; flex-shrink:0; transition:color .15s; }
+    .frm:hover { color:var(--danger); }
+    .frm svg { width:12px; height:12px; }
+
+    .div { height:1px; background:var(--border); margin:0 20px 18px; }
+
+    /* Quality */
+    .sec { padding:0 20px 18px; }
+    .sec-lbl { font-size:10px; font-family:'DM Mono',monospace; letter-spacing:.1em;
+               text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+    .qgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+    .qbtn { background:transparent; border:1px solid var(--border); border-radius:7px;
+            padding:9px 4px; text-align:center; cursor:pointer; transition:all .15s; user-select:none; }
+    .qbtn:hover  { border-color:var(--border2); background:rgba(255,255,255,.02); }
+    .qbtn.active { border-color:rgba(79,255,176,.4); background:rgba(79,255,176,.06); }
+    .qname { font-size:11px; font-weight:600; }
+    .qbtn.active .qname { color:var(--accent); }
+    .qsub  { font-size:9px; font-family:'DM Mono',monospace; color:var(--muted); margin-top:2px; line-height:1.4; }
+
+    /* Button */
+    #go-btn { width:100%; padding:12px; border:none; border-radius:8px;
+              font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+              cursor:pointer; transition:all .2s; background:var(--accent); color:#080b10; }
+    #go-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 5px 20px rgba(79,255,176,.2); }
+    #go-btn:disabled { opacity:.22; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-inner { display:flex; align-items:center; justify-content:center; gap:6px; }
+    .btn-inner svg { width:15px; height:15px; }
+
+    /* Progress */
+    .prog-wrap { display:none; padding:14px 20px 18px; }
+    .prog-wrap.show { display:block; animation:fadeup .2s ease; }
+    .prog-row { display:flex; justify-content:space-between; margin-bottom:7px; }
+    .prog-lbl { font-size:11px; color:var(--muted); }
+    .prog-pct { font-size:11px; font-family:'DM Mono',monospace; color:var(--accent); }
+    .track { height:2px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; }
+    .fill  { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--accent),var(--accent2));
+             width:0; transition:width .3s; }
+    .fill.pulse { width:45%; animation:sweep 1.2s ease-in-out infinite; }
+    .stat-msg { font-size:10px; font-family:'DM Mono',monospace; color:var(--muted); margin-top:5px; min-height:14px; }
+    .stat-msg.err { color:var(--danger); }
+
+    /* Summary */
+    .summary { display:none; padding:0 20px 20px; }
+    .summary.show { display:block; animation:fadeup .25s ease; }
+    .sum-bar { background:rgba(79,255,176,.04); border:1px solid rgba(79,255,176,.14);
+               border-radius:9px; padding:14px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .sum-ico { color:var(--accent); flex-shrink:0; }
+    .sum-ico svg { width:16px; height:16px; display:block; }
+    .sum-text { flex:1; min-width:0; }
+    .sum-text strong { font-size:13px; font-weight:600; }
+    .sum-text p { font-size:10px; font-family:'DM Mono',monospace; color:var(--muted); margin-top:2px; }
+    #dl-all { padding:8px 14px; border:none; border-radius:6px; font-family:'DM Sans',sans-serif;
+              font-size:12px; font-weight:600; cursor:pointer; background:var(--accent); color:#080b10;
+              flex-shrink:0; display:flex; align-items:center; gap:5px; transition:all .15s; }
+    #dl-all:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(79,255,176,.2); }
+    #dl-all svg { width:13px; height:13px; }
+    #reset-btn { display:block; width:100%; margin-top:7px; padding:9px; border:1px solid var(--border);
+                 border-radius:7px; background:none; font-family:'DM Sans',sans-serif; font-size:12px;
+                 font-weight:500; color:var(--muted); cursor:pointer; transition:all .15s; }
+    #reset-btn:hover { border-color:var(--border2); color:var(--text); }
+
+    /* Features */
+    .feats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:12px; }
+    .feat { background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:13px; }
+    .feat svg { width:15px; height:15px; margin-bottom:7px; }
+    .feat.g svg { color:var(--accent); } .feat.b svg { color:var(--accent2); } .feat.r svg { color:var(--danger); }
+    .feat h3 { font-size:11px; font-weight:600; margin-bottom:2px; }
+    .feat p  { font-size:10px; color:var(--muted); line-height:1.5; }
+
+    footer { margin-top:28px; text-align:center; font-size:10px; font-family:'DM Mono',monospace; color:var(--border2); }
+    footer a { color:var(--muted); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+
+    @keyframes fadeup { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    @media(max-width:460px){ .qgrid{grid-template-columns:repeat(2,1fr)} .feats{grid-template-columns:1fr 1fr}
+      .sum-bar{flex-direction:column;align-items:flex-start} #dl-all{width:100%;justify-content:center} }
+  </style>
 </head>
 <body>
+<div class="wrap">
+  <header>
+    <div class="pill"><span class="dot"></span>100% client-side · zero upload</div>
+    <h1>PDF <em>Compressor</em></h1>
+    <p class="sub">Shrink PDFs in your browser via Ghostscript WASM. Files never leave your device.</p>
+  </header>
 
-<header>
-  <div class="wordmark">
-    <span class="wordmark-dot"></span>
-    PDF Compressor
-  </div>
-  <h1>Compress your PDFs</h1>
-  <p class="subtitle">Remove or keep images · Three compression levels<br>Everything runs in your browser — nothing is uploaded.</p>
-</header>
+  <div class="card">
+    <div class="dz-wrap">
+      <div id="dz">
+        <div class="dz-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+          </svg>
+        </div>
+        <div class="dz-lbl">Drop PDFs here</div>
+        <div class="dz-hint">or click to browse · multiple files supported</div>
+        <input id="file-input" type="file" accept="application/pdf" multiple />
+      </div>
+      <div id="queue"></div>
+    </div>
 
-<!-- Settings card -->
-<div class="card fade-in">
+    <div class="div"></div>
 
-  <!-- Image mode -->
-  <div class="card-section">
-    <div class="section-label">Image handling</div>
-    <div class="seg">
-      <label class="seg-btn active" id="modeCardText">
-        <input type="radio" name="imageMode" value="remove" checked>
-        <span class="seg-btn-label">Remove images</span>
-        <span class="seg-btn-desc">Text only · maximum compression</span>
-      </label>
-      <label class="seg-btn" id="modeCardKeep">
-        <input type="radio" name="imageMode" value="keep">
-        <span class="seg-btn-label">Keep images</span>
-        <span class="seg-btn-desc">Re-compress at lower quality</span>
-      </label>
+    <div class="sec">
+      <div class="sec-lbl">Compression Level</div>
+      <div class="qgrid">
+        <div class="qbtn" data-q="screen"><div class="qname">Screen</div><div class="qsub">72 dpi<br>Smallest</div></div>
+        <div class="qbtn active" data-q="ebook"><div class="qname">eBook</div><div class="qsub">150 dpi<br>Balanced</div></div>
+        <div class="qbtn" data-q="printer"><div class="qname">Printer</div><div class="qsub">300 dpi<br>High</div></div>
+        <div class="qbtn" data-q="prepress"><div class="qname">Prepress</div><div class="qsub">300 dpi<br>Best</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <button id="go-btn" disabled>
+        <span class="btn-inner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0
+              00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0
+              0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0
+              00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25
+              2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25
+              0 012.013-1.244h3.859M12 3v8.25m0 0l-3-3m3 3l3-3"/>
+          </svg>
+          <span id="btn-lbl">Compress PDF</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="prog-wrap" id="prog-wrap">
+      <div class="prog-row">
+        <div class="prog-lbl" id="prog-lbl">Processing…</div>
+        <div class="prog-pct" id="prog-pct">—</div>
+      </div>
+      <div class="track"><div class="fill" id="prog-fill"></div></div>
+      <div class="stat-msg" id="stat-msg"></div>
+    </div>
+
+    <div class="summary" id="summary">
+      <div class="sum-bar">
+        <div class="sum-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div class="sum-text">
+          <strong id="sum-title">Done!</strong>
+          <p id="sum-detail"></p>
+        </div>
+        <button id="dl-all">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0
+              0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+          </svg>
+          Download All
+        </button>
+      </div>
+      <button id="reset-btn">Start over</button>
     </div>
   </div>
 
-  <!-- Compression level -->
-  <div class="card-section">
-    <div class="section-label">Compression level</div>
-    <div class="level-track">
-      <label class="level-btn lv-low" id="pillLow">
-        <input type="radio" name="compLevel" value="low" checked>
-        <span class="level-btn-name">Low</span>
-        <span class="level-btn-hint">Best quality</span>
-      </label>
-      <label class="level-btn" id="pillMedium">
-        <input type="radio" name="compLevel" value="medium">
-        <span class="level-btn-name">Medium</span>
-        <span class="level-btn-hint">Recommended</span>
-      </label>
-      <label class="level-btn" id="pillExtreme">
-        <input type="radio" name="compLevel" value="extreme">
-        <span class="level-btn-name">Extreme</span>
-        <span class="level-btn-hint">Smallest size</span>
-      </label>
+  <div class="feats">
+    <div class="feat g">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0
+          002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0
+          00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+      </svg>
+      <h3>100% Private</h3><p>Nothing leaves your browser.</p>
+    </div>
+    <div class="feat b">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+      </svg>
+      <h3>Ghostscript WASM</h3><p>Industry-grade engine.</p>
+    </div>
+    <div class="feat r">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142
+          0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179
+          2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142
+          0l-5.571 3-5.571-3"/>
+      </svg>
+      <h3>Batch Mode</h3><p>Multiple PDFs at once.</p>
     </div>
   </div>
 
-  <!-- Image quality slider (keep images only) -->
-  <div class="card-section" id="imgQualitySection" style="display:none">
-    <div class="quality-row visible" id="imgQualityRow">
-      <div class="quality-header">
-        <span class="quality-title">Image quality</span>
-        <span class="quality-badge" id="qualityVal">70%</span>
-      </div>
-      <input type="range" id="imgQuality" min="10" max="95" value="70" step="5">
-      <div class="quality-ticks">
-        <span>Tiny</span><span>Balanced</span><span>Near-original</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Font & page -->
-  <div class="card-section">
-    <div class="section-label">Output settings</div>
-    <div class="settings-row">
-      <div class="setting">
-        <label class="setting-label">Font size</label>
-        <select id="fontSize">
-          <option value="8">8 pt — compact</option>
-          <option value="9">9 pt — small</option>
-          <option value="10" selected>10 pt — default</option>
-          <option value="11">11 pt — comfortable</option>
-          <option value="12">12 pt — large</option>
-        </select>
-      </div>
-      <div class="setting">
-        <label class="setting-label">Page format</label>
-        <select id="pageSize">
-          <option value="a4" selected>A4</option>
-          <option value="letter">Letter</option>
-          <option value="a3">A3</option>
-          <option value="legal">Legal</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
+  <footer>Powered by <a href="https://github.com/jsscheller/ghostscript-wasm" target="_blank">@jspawn/ghostscript-wasm</a></footer>
 </div>
 
-<!-- Upload card -->
-<div class="card fade-in" style="margin-top:12px">
-  <div class="card-section">
-    <div class="section-label">Files</div>
+<script type="module">
+  /*
+   * Engine: 100% identical to the original working version.
+   * CDN, gsInitFn, gsInst, callMain args — unchanged.
+   * Multi-file support added on top as a queue loop.
+   * "Page not responding" reduced by yielding before each blocking callMain.
+   * Note: callMain IS synchronous/blocking by design in this WASM build —
+   * the browser may still show a spinner during heavy PDFs; that is normal
+   * and clicking "Wait" is all that's needed. It will finish.
+   */
+  const CDN = 'https://cdn.jsdelivr.net/npm/@jspawn/ghostscript-wasm@0.0.2/';
+  let gsInitFn = null;
+  let gsInst   = null;
 
-    <div class="drop-zone" id="dropZone">
-      <input type="file" id="fileInput" multiple accept=".pdf">
-      <div class="drop-icon-wrap">
-        <svg class="drop-icon-svg" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="12" y1="18" x2="12" y2="12"/>
-          <polyline points="9 15 12 12 15 15"/>
+  let quality = 'ebook';
+  let queue   = [];
+  let running = false;
+  let uid     = 0;
+
+  const dz        = document.getElementById('dz');
+  const fi        = document.getElementById('file-input');
+  const qEl       = document.getElementById('queue');
+  const goBtn     = document.getElementById('go-btn');
+  const btnLbl    = document.getElementById('btn-lbl');
+  const progWrap  = document.getElementById('prog-wrap');
+  const progFill  = document.getElementById('prog-fill');
+  const progPct   = document.getElementById('prog-pct');
+  const progLbl   = document.getElementById('prog-lbl');
+  const statMsg   = document.getElementById('stat-msg');
+  const summary   = document.getElementById('summary');
+  const sumTitle  = document.getElementById('sum-title');
+  const sumDetail = document.getElementById('sum-detail');
+  const dlAll     = document.getElementById('dl-all');
+  const resetBtn  = document.getElementById('reset-btn');
+  const qBtns     = document.querySelectorAll('.qbtn');
+
+  const fmt = b => b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(2)} MB`;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function setStat(msg, err=false) { statMsg.textContent=msg; statMsg.classList.toggle('err',err); }
+  function setProgress(pct) {
+    if (pct<0){ progFill.classList.add('pulse'); progFill.style.width=''; progPct.textContent='—'; }
+    else { progFill.classList.remove('pulse'); progFill.style.width=pct+'%'; progPct.textContent=Math.round(pct)+'%'; }
+  }
+  function refreshBtn() {
+    const n=queue.filter(i=>i.status==='waiting').length;
+    goBtn.disabled=n===0||running;
+    btnLbl.textContent=n>1?`Compress ${n} PDFs`:'Compress PDF';
+  }
+
+  function addRow(item) {
+    const d=document.createElement('div');
+    d.className='frow'; d.id=`r${item.id}`;
+    d.innerHTML=`
+      <div class="fthumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125
+            0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5
+            3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504
+            1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
         </svg>
       </div>
-      <div class="drop-title">Drop PDF files here</div>
-      <div class="drop-sub">or click to browse · multiple files supported</div>
-    </div>
-
-    <div class="file-list hidden" id="fileList"></div>
-
-    <div class="actions hidden" id="actions">
-      <button class="btn btn-ghost" id="clearBtn">Clear</button>
-      <button class="btn btn-primary" id="processBtn">Compress files</button>
-    </div>
-
-    <div class="stats-grid hidden" id="statsBar">
-      <div class="stat-cell">
-        <div class="stat-label">Files</div>
-        <div class="stat-value" id="statFiles">—</div>
+      <div class="finfo">
+        <div class="fname">${item.file.name}</div>
+        <div class="fmeta" id="fm${item.id}">${fmt(item.file.size)}</div>
+        <div class="fbar" id="fb${item.id}"><div class="fbar-fill" id="ff${item.id}"></div></div>
       </div>
-      <div class="stat-cell">
-        <div class="stat-label">Before</div>
-        <div class="stat-value is-blue" id="statOriginal">—</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-label">After</div>
-        <div class="stat-value" id="statCompressed">—</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-label">Saved</div>
-        <div class="stat-value is-green" id="statSaved">—</div>
-      </div>
-    </div>
-
-    <div class="download-all hidden" id="downloadAll">
-      <button class="btn-download-all" id="downloadAllBtn">Download all compressed PDFs</button>
-    </div>
-
-    <div class="log-wrap hidden" id="logWrap">
-      <button class="log-toggle-btn" id="logToggle">
-        <span class="log-toggle-caret" id="logCaret">▶</span>
-        Processing log
+      <span class="ftag" id="ft${item.id}">waiting</span>
+      <button class="fdl" id="fd${item.id}" title="Download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0
+            0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
       </button>
-      <div class="log-box hidden" id="logBox"></div>
-    </div>
+      <button class="frm" id="frm${item.id}" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>`;
+    qEl.appendChild(d);
+    d.querySelector(`#frm${item.id}`).onclick=()=>{
+      if(item.status==='running') return;
+      if(item.dlURL) URL.revokeObjectURL(item.dlURL);
+      queue=queue.filter(q=>q.id!==item.id); d.remove(); refreshBtn();
+      if(!queue.length){ progWrap.classList.remove('show'); summary.classList.remove('show'); }
+    };
+    d.querySelector(`#fd${item.id}`).onclick=()=>{
+      if(!item.dlURL) return;
+      const a=document.createElement('a'); a.href=item.dlURL;
+      a.download=item.file.name.replace(/\.pdf$/i,'')+'_compressed.pdf'; a.click();
+    };
+  }
 
-  </div>
-</div>
+  function rowState(item, state, meta) {
+    item.status=state;
+    const row=document.getElementById(`r${item.id}`);
+    const tag=document.getElementById(`ft${item.id}`);
+    const bar=document.getElementById(`fb${item.id}`);
+    const fill=document.getElementById(`ff${item.id}`);
+    const dl=document.getElementById(`fd${item.id}`);
+    const fm=document.getElementById(`fm${item.id}`);
+    if(!row) return;
+    row.className=`frow ${state==='running'?'running':state==='done'?'done':state==='error'?'error':''}`;
+    tag.className=`ftag ${state}`; tag.textContent=state;
+    if(state==='running'){ bar.classList.add('show'); fill.classList.add('pulse'); fill.style.width=''; }
+    if(state==='done'){    bar.classList.add('show'); fill.classList.remove('pulse'); fill.style.width='100%'; dl.classList.add('show'); if(meta) fm.textContent=meta; }
+    if(state==='error'){   bar.classList.add('show'); fill.classList.remove('pulse'); fill.style.width='0%'; if(meta) fm.textContent=meta; }
+  }
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const { jsPDF } = window.jspdf;
+  function addFiles(files) {
+    for(const f of files){
+      if(f.type!=='application/pdf') continue;
+      const item={file:f,id:uid++,status:'waiting',dlURL:null,origSize:f.size};
+      queue.push(item); addRow(item);
+    }
+    refreshBtn(); summary.classList.remove('show');
+  }
 
-  let files = [], results = [];
-
-  const $ = id => document.getElementById(id);
-
-  const dropZone        = $('dropZone');
-  const fileInput       = $('fileInput');
-  const fileListEl      = $('fileList');
-  const actionsEl       = $('actions');
-  const processBtn      = $('processBtn');
-  const clearBtn        = $('clearBtn');
-  const statsBar        = $('statsBar');
-  const downloadAllEl   = $('downloadAll');
-  const downloadAllBtn  = $('downloadAllBtn');
-  const logWrap         = $('logWrap');
-  const logToggle       = $('logToggle');
-  const logBox          = $('logBox');
-  const logCaret        = $('logCaret');
-  const imgQualitySection = $('imgQualitySection');
-  const imgQualitySlider  = $('imgQuality');
-  const qualityVal        = $('qualityVal');
-
-  const getMode   = () => document.querySelector('input[name="imageMode"]:checked').value;
-  const getLevel  = () => document.querySelector('input[name="compLevel"]:checked').value;
-  const getImgQ   = () => parseInt(imgQualitySlider.value) / 100;
-  const getFontSz = () => parseInt($('fontSize').value);
-  const getPageSz = () => $('pageSize').value;
-
-  const LEVEL_CFG = {
-    low:     { fontMult:1.0,  marginMult:1.0,  lineHMult:1.0,  renderScale:1.4,  autoImgQ:0.85 },
-    medium:  { fontMult:0.9,  marginMult:0.85, lineHMult:0.9,  renderScale:1.0,  autoImgQ:0.60 },
-    extreme: { fontMult:0.78, marginMult:0.65, lineHMult:0.82, renderScale:0.65, autoImgQ:0.28 },
+  dz.addEventListener('click',()=>fi.click());
+  fi.addEventListener('change',e=>{addFiles(e.target.files);fi.value='';});
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
+  qBtns.forEach(b=>b.addEventListener('click',()=>{qBtns.forEach(x=>x.classList.remove('active'));b.classList.add('active');quality=b.dataset.q;}));
+  resetBtn.onclick=()=>{
+    queue.forEach(i=>{if(i.dlURL)URL.revokeObjectURL(i.dlURL);});
+    queue=[];qEl.innerHTML='';summary.classList.remove('show');progWrap.classList.remove('show');running=false;refreshBtn();
   };
 
-  /* ── Mode toggle ── */
-  document.querySelectorAll('input[name="imageMode"]').forEach(r => {
-    r.addEventListener('change', () => {
-      $('modeCardText').classList.remove('active');
-      $('modeCardKeep').classList.remove('active');
-      if (getMode() === 'remove') {
-        $('modeCardText').classList.add('active');
-        imgQualitySection.style.display = 'none';
-      } else {
-        $('modeCardKeep').classList.add('active');
-        imgQualitySection.style.display = 'block';
+  goBtn.addEventListener('click', async ()=>{
+    const pending=queue.filter(i=>i.status==='waiting');
+    if(!pending.length||running) return;
+    running=true; refreshBtn();
+    summary.classList.remove('show');
+    progWrap.classList.add('show');
+    setProgress(-1);
+
+    try {
+      if(!gsInitFn){
+        setStat('Downloading Ghostscript WASM (~18 MB, cached after first run)…');
+        progLbl.textContent='Loading engine…';
+        const mod=await import(`${CDN}gs.mjs`);
+        gsInitFn=mod.default;
       }
-    });
-  });
-
-  /* ── Level buttons ── */
-  const PILL_CLS = { low:'lv-low', medium:'lv-medium', extreme:'lv-extreme' };
-  const PILL_ID  = { low:'pillLow', medium:'pillMedium', extreme:'pillExtreme' };
-
-  function syncPills() {
-    Object.values(PILL_ID).forEach(id => $(id).classList.remove('lv-low','lv-medium','lv-extreme'));
-    const lv = getLevel();
-    $(PILL_ID[lv]).classList.add(PILL_CLS[lv]);
-  }
-
-  document.querySelectorAll('input[name="compLevel"]').forEach(r => {
-    r.addEventListener('change', () => {
-      syncPills();
-      if (getMode() === 'keep') {
-        const q = Math.round(LEVEL_CFG[getLevel()].autoImgQ * 100);
-        imgQualitySlider.value = q;
-        qualityVal.textContent = q + '%';
+      if(!gsInst){
+        setStat('Initializing Ghostscript…');
+        gsInst=await gsInitFn({locateFile:f=>CDN+f});
       }
-    });
-  });
 
-  imgQualitySlider.addEventListener('input', () => { qualityVal.textContent = imgQualitySlider.value + '%'; });
+      const gs=gsInst;
+      let saved=0,done=0,errs=0;
 
-  /* ── Log toggle ── */
-  logToggle.addEventListener('click', () => {
-    const open = !logBox.classList.contains('hidden');
-    logBox.classList.toggle('hidden', open);
-    logCaret.classList.toggle('open', !open);
-  });
+      for(let i=0;i<pending.length;i++){
+        const item=pending[i];
+        progLbl.textContent=pending.length>1?`File ${i+1} of ${pending.length}`:'Compressing…';
+        setProgress((i/pending.length)*100);
+        setStat(`Reading "${item.file.name}"…`);
+        rowState(item,'running');
 
-  /* ── Drag & drop ── */
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault(); dropZone.classList.remove('drag-over');
-    addFiles([...e.dataTransfer.files].filter(f => f.type === 'application/pdf'));
-  });
-  fileInput.addEventListener('change', () => addFiles([...fileInput.files]));
+        try{
+          const buf=await item.file.arrayBuffer();       // async read — UI stays live
+          setStat(`Compressing "${item.file.name}" at /${quality}…`);
+          await sleep(80);                               // let browser paint before blocking call
 
-  /* ── Clear ── */
-  clearBtn.addEventListener('click', () => {
-    files = []; results = [];
-    fileListEl.innerHTML = '';
-    [fileListEl, actionsEl, statsBar, downloadAllEl, logWrap].forEach(el => el.classList.add('hidden'));
-    logBox.innerHTML = '';
-    fileInput.value = '';
-    processBtn.disabled = false;
-  });
+          // ── identical to original working version ──
+          gs.FS.writeFile('input.pdf',new Uint8Array(buf));
+          gs.callMain([
+            '-sDEVICE=pdfwrite',
+            '-dCompatibilityLevel=1.4',
+            `-dPDFSETTINGS=/${quality}`,
+            '-dNOPAUSE','-dQUIET','-dBATCH',
+            '-sOutputFile=output.pdf',
+            'input.pdf'
+          ]);
+          const out=gs.FS.readFile('output.pdf');
+          try{gs.FS.unlink('input.pdf');}catch(_){}
+          try{gs.FS.unlink('output.pdf');}catch(_){}
+          // ── end original block ──
 
-  /* ── Add files ── */
-  function addFiles(newFiles) {
-    newFiles.forEach(f => {
-      if (!files.find(x => x.name === f.name && x.size === f.size)) {
-        files.push(f); renderFileItem(f);
-      }
-    });
-    if (files.length) {
-      fileListEl.classList.remove('hidden');
-      actionsEl.classList.remove('hidden');
-    }
-  }
-
-  function renderFileItem(file) {
-    const id = 'f_' + Math.random().toString(36).slice(2);
-    file._id = id;
-    const div = document.createElement('div');
-    div.className = 'file-item'; div.id = id;
-    div.innerHTML = `
-      <div class="file-icon-box">
-        <svg class="file-icon-svg" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-        </svg>
-      </div>
-      <div class="file-info">
-        <div class="file-name">${file.name}</div>
-        <div class="file-meta">
-          <span>${fmtSize(file.size)}</span>
-          <span id="${id}_meta"></span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" id="${id}_prog"></div></div>
-      </div>
-      <div class="file-right">
-        <div class="status-chip"><div class="status-dot"></div><span id="${id}_status">Queued</span></div>
-        <span id="${id}_dl"></span>
-      </div>`;
-    fileListEl.appendChild(div);
-  }
-
-  function setItemState(file, state, txt, meta) {
-    const el = document.getElementById(file._id);
-    if (!el) return;
-    el.className = 'file-item ' + state;
-    $(file._id + '_status').textContent = txt;
-    if (meta) $(file._id + '_meta').textContent = meta;
-  }
-
-  function setProgress(file, pct) {
-    const p = $(file._id + '_prog');
-    if (p) p.style.width = pct + '%';
-  }
-
-  function fmtSize(b) {
-    if (b < 1024)    return b + ' B';
-    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-    return (b/1048576).toFixed(2) + ' MB';
-  }
-
-  function log(msg, type='info') {
-    const d = document.createElement('div');
-    d.className = 'log-line ' + type;
-    d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-    logBox.appendChild(d); logBox.scrollTop = logBox.scrollHeight;
-  }
-
-  /* ── Process ── */
-  processBtn.addEventListener('click', async () => {
-    if (!files.length) return;
-    processBtn.disabled = true;
-    results = [];
-    downloadAllEl.classList.add('hidden');
-    logWrap.classList.remove('hidden');
-    statsBar.classList.remove('hidden');
-    logBox.innerHTML = '';
-
-    const mode  = getMode();
-    const level = getLevel();
-    const cfg   = LEVEL_CFG[level];
-    const imgQ  = mode === 'keep' ? getImgQ() : cfg.autoImgQ;
-    const fontSize   = Math.max(6, Math.round(getFontSz() * cfg.fontMult));
-    const pageFmt    = getPageSz();
-    const margin     = Math.round(40 * cfg.marginMult);
-    const lineHeight = Math.round((fontSize + 4) * cfg.lineHMult);
-
-    log(`${mode === 'remove' ? 'Remove images' : 'Keep images'} · ${level} · ${fontSize}pt · ${pageFmt.toUpperCase()}`);
-
-    let totalOrig = 0, totalNew = 0;
-
-    for (const file of files) {
-      setItemState(file, 'processing', 'Reading…');
-      setProgress(file, 5);
-      log(`Processing ${file.name}`);
-
-      try {
-        const origSize = file.size;
-        totalOrig += origSize;
-        const buf = await file.arrayBuffer();
-        setProgress(file, 15);
-
-        const pdfDoc   = await pdfjsLib.getDocument({ data: buf }).promise;
-        const numPages = pdfDoc.numPages;
-        setProgress(file, 22);
-
-        const pageTexts = [];
-        let imgCount = 0;
-        const IMG_OPS = [
-          pdfjsLib.OPS.paintImageXObject,
-          pdfjsLib.OPS.paintInlineImageXObject,
-          pdfjsLib.OPS.paintImageMaskXObject
-        ];
-
-        for (let i = 1; i <= numPages; i++) {
-          const page = await pdfDoc.getPage(i);
-          const [tc, ops] = await Promise.all([page.getTextContent(), page.getOperatorList()]);
-          imgCount += ops.fnArray.filter(op => IMG_OPS.includes(op)).length;
-
-          let text = '', lastY = null;
-          for (const item of tc.items) {
-            if ('str' in item) {
-              const y = item.transform ? item.transform[5] : 0;
-              if (lastY !== null && Math.abs(y - lastY) > 2) text += '\n';
-              text += item.str;
-              if (item.hasEOL) text += '\n';
-              lastY = y;
-            }
-          }
-          pageTexts.push(text.trim());
-          setProgress(file, 22 + Math.round((i / numPages) * 33));
+          const blob=new Blob([out],{type:'application/pdf'});
+          item.dlURL=URL.createObjectURL(blob);
+          const gain=item.origSize-out.byteLength;
+          saved+=Math.max(0,gain);
+          const pct=((gain/item.origSize)*100).toFixed(1);
+          rowState(item,'done',gain>0
+            ?`${fmt(item.origSize)} → ${fmt(out.byteLength)} (↓${pct}%)`
+            :`${fmt(item.origSize)} — already optimized`);
+          done++;
+        }catch(e){
+          console.error(e); rowState(item,'error','Failed'); errs++; gsInst=null;
         }
-
-        log(`  ${numPages} page(s) · ${imgCount} image(s) found`, imgCount > 0 ? 'warn' : 'info');
-        setProgress(file, 57);
-
-        /* Mode A — Text only */
-        if (mode === 'remove') {
-          setItemState(file, 'processing', 'Rebuilding…');
-          const doc  = new jsPDF({ unit:'pt', format:pageFmt, compress:true });
-          const pageW = doc.internal.pageSize.getWidth();
-          const pageH = doc.internal.pageSize.getHeight();
-          const maxW  = pageW - margin * 2;
-          doc.setFont('helvetica','normal');
-          doc.setFontSize(fontSize);
-
-          for (let p = 0; p < pageTexts.length; p++) {
-            if (p > 0) doc.addPage();
-            let curY = margin;
-            for (const para of pageTexts[p].split('\n')) {
-              if (!para.trim()) { curY += lineHeight * 0.4; continue; }
-              for (const line of doc.splitTextToSize(para, maxW)) {
-                if (curY + lineHeight > pageH - margin) { doc.addPage(); curY = margin; }
-                doc.text(line, margin, curY);
-                curY += lineHeight;
-              }
-            }
-            setProgress(file, 57 + Math.round(((p+1)/pageTexts.length)*30));
-          }
-
-          setProgress(file, 90);
-          finishFile(file, doc.output('blob'), origSize, imgCount, 'no-images');
-
-        /* Mode B — Keep images */
-        } else {
-          setItemState(file, 'processing', 'Rendering…');
-          const doc  = new jsPDF({ unit:'pt', format:pageFmt, compress:true });
-          const docW = doc.internal.pageSize.getWidth();
-          const docH = doc.internal.pageSize.getHeight();
-
-          for (let i = 1; i <= numPages; i++) {
-            if (i > 1) doc.addPage();
-            const page = await pdfDoc.getPage(i);
-            const vp   = page.getViewport({ scale: cfg.renderScale });
-            const canvas = document.createElement('canvas');
-            canvas.width = vp.width; canvas.height = vp.height;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext:ctx, viewport:vp }).promise;
-            const imgData = canvas.toDataURL('image/jpeg', imgQ);
-            const ratio = Math.min(docW / vp.width, docH / vp.height);
-            const imgW  = vp.width * ratio, imgH = vp.height * ratio;
-            doc.addImage(imgData,'JPEG',(docW-imgW)/2,(docH-imgH)/2,imgW,imgH,undefined,'FAST');
-            setProgress(file, 57 + Math.round((i/numPages)*33));
-          }
-
-          setProgress(file, 92);
-          finishFile(file, doc.output('blob'), origSize, imgCount, 'with-images');
-        }
-
-        totalNew += results[results.length - 1].newSize;
-
-      } catch (err) {
-        setItemState(file, 'error', 'Failed');
-        log(`  Error: ${err.message}`, 'err');
+        await sleep(50); // breathe between files
       }
+
+      setProgress(100);
+      progWrap.classList.remove('show');
+      sumTitle.textContent=`${done} file${done!==1?'s':''} compressed${errs?`, ${errs} failed`:''}`;
+      sumDetail.textContent=saved>0?`Saved ${fmt(saved)} total`:'Files already optimized';
+      dlAll.style.display=done<=1?'none':'';
+      dlAll.onclick=async()=>{
+        for(const item of pending.filter(x=>x.status==='done')){
+          const a=document.createElement('a');a.href=item.dlURL;
+          a.download=item.file.name.replace(/\.pdf$/i,'')+'_compressed.pdf';a.click();
+          await sleep(300);
+        }
+      };
+      summary.classList.add('show');
+    }catch(e){
+      console.error(e); setStat('Error: '+(e.message||String(e)),true); gsInst=null;
+    }finally{
+      running=false; refreshBtn();
     }
-
-    $('statFiles').textContent      = results.length;
-    $('statOriginal').textContent   = fmtSize(totalOrig);
-    $('statCompressed').textContent = fmtSize(totalNew);
-    const pct = totalOrig > 0 ? Math.max(0, Math.round((1 - totalNew/totalOrig)*100)) : 0;
-    $('statSaved').textContent = pct + '%';
-
-    if (results.length) downloadAllEl.classList.remove('hidden');
-    log(`Done — ${results.length}/${files.length} files compressed`, 'ok');
-    processBtn.disabled = false;
-  });
-
-  function finishFile(file, blob, origSize, imgCount, tag) {
-    const newSize = blob.size;
-    const savings = Math.max(0, Math.round((1 - newSize/origSize)*100));
-    const suffix  = tag === 'no-images' ? '_no-images_compressed' : '_compressed';
-    const outName = file.name.replace(/\.pdf$/i, '') + suffix + '.pdf';
-    results.push({ name:outName, blob, origSize, newSize });
-
-    setProgress(file, 100);
-    setItemState(file, 'done', 'Done',
-      `${fmtSize(origSize)} → ${fmtSize(newSize)} (−${savings}%)` +
-      (imgCount > 0 ? ` · ${imgCount} img` : '')
-    );
-
-    const spot = $(file._id + '_dl');
-    const a = document.createElement('a');
-    a.className='dl-btn'; a.textContent='Download';
-    a.href=URL.createObjectURL(blob); a.download=outName;
-    spot.appendChild(a);
-
-    log(`  Saved ${savings}% · ${fmtSize(newSize)}`, 'ok');
-  }
-
-  downloadAllBtn.addEventListener('click', () => {
-    results.forEach((r,i) => {
-      setTimeout(() => {
-        const a=document.createElement('a');
-        a.href=URL.createObjectURL(r.blob);
-        a.download=r.name; a.click();
-      }, i*450);
-    });
   });
 </script>
 </body>
